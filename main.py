@@ -7,8 +7,11 @@ or modification of cryptographically random numbers.
 from argparse import ArgumentParser
 from os import path
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from models import Limiter, Modifier, Recommender
-from sp800_22_tests import test_number
+from test_suite import test_number
 
 
 __version__ = '1.0'
@@ -35,6 +38,7 @@ def parse_args():
                         help='Model filename')
     parser.add_argument('--model_filename', '-m', type=str, help='Model filename')
     parser.add_argument('--plot_filename', '-p', type=str, help='Plot filename')
+    parser.add_argument('-t', '--tests_path', type=str, help='NIST statistical test suite path')
     parser.add_argument('--summary', '-s', action='store_true', help='Print model summary')
     parser.add_argument('--fit', '-f', action='store_true', help='Fit model')
 
@@ -71,17 +75,16 @@ def postprocess_predictions(predictions):
     return result
 
 
-def evaluate_prediction(numbers):
+def evaluate_prediction(numbers, test_suite_path):
     """Run NIST tests to determine randomness of predicted numbers."""
-    success_count = 0
+    results = [test_number(number, test_suite_path) for number in numbers]
 
-    for number in numbers:
-        if test_number(number):
-            success_count += 1
+    success_measure = np.mean(results)
 
-    success_percentage = (success_count / len(numbers)) * 100
+    print(f'Evaluation: {success_measure * 100}%')
 
-    print(f'Evaluation: {success_percentage}%')
+    plt.plot(results)
+    plt.show()
 
 
 def main():
@@ -106,10 +109,10 @@ def main():
 
     predictions = model.predict(x_test)
 
-    if model.is_evaluable:
+    if args.tests_path and model.is_evaluable:
         numbers = postprocess_predictions(predictions)
 
-        evaluate_prediction(numbers)
+        evaluate_prediction(numbers, args.tests_path)
     else:
         print(f'Predictions: {predictions}')
 
